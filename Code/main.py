@@ -4,7 +4,8 @@ from config import CHECKPOINT_PATH, RGB_PATH, HSV_PATH, PATH_TO_SSD, CHUNK_SIZE,
 from index_images import process_and_save_images
 from embeddings import process_images_and_save_embeddings
 from db_api import create_tables, create_connection, get_image_ids
-from create_plot_knn import find_top_5_similar_images, plot_top_5_images
+from create_plot_knn import load_embeddings_from_pickle, load_histograms_from_csv, find_top_5_similar_images, plot_top_5_images
+
 
 def main():
 # Step 1: Process and save RGB and HSV histograms
