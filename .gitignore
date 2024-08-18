@@ -2,7 +2,12 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+# All DB Files
+*.db
+# All CSV Files
+*.csv
+# All PKL File
+*.pkl
 # C extensions
 *.so
 
