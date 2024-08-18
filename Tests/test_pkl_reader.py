@@ -18,7 +18,7 @@ def print_pickle_file_contents(pickle_file_path):
         print(f"An error occurred while reading the pickle file: {e}")
 
 # Specify the path to your pickle file
-pickle_file_path = 'checkpoint.pkl'  # Adjust the path as needed
+pickle_file_path = 'embeddings.pkl'  
 
 # Run the function
 print_pickle_file_contents(pickle_file_path)
