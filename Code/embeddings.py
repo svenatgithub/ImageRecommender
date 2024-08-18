@@ -5,7 +5,7 @@ from tqdm import tqdm
 from efficientnet_pytorch import EfficientNet
 import torch
 from PIL import Image
-from config import PICKLE_PATH, CHECKPOINT_PATH, CHECKPOINT_INTERVAL
+from config import PICKLE_PATH, CHECKPOINT_PATH, CHUNK_SIZE
 
 #EfficientNet b0 only can work with images of size 224x224 so we need to adjust the image size and dimensions
 def load_image(image_path):
