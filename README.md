@@ -1,5 +1,2 @@
 # ImageRecommender
-Create a Image Recommender based on an imported Image
-Features
--  Recommendation by Color
--  Recommendation by Content
+Image Recommender Software developed by DAISY Students 
