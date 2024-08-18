@@ -24,7 +24,7 @@ def main():
 # Step 3: Process images and save embeddings directly as a pickle file (we first were saving the embeddings as df and then converted but this approah is quite CPU heavy). 
     print("Processing and saving embeddings...")
     image_paths = [os.path.join(PATH_TO_SSD, f) for f in os.listdir(PATH_TO_SSD) if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
-    process_images_and_save_embeddings(image_paths, CHUNK_SIZE, CHECKPOINT_PATH)
+    process_images_and_save_embeddings(image_paths, CHUNK_SIZE, CHECKPOINT_PATH, PICKLE_PATH)
 
     # Step 4: Retrieve all image_ids from the database
     image_ids = get_image_ids(conn)
