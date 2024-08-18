@@ -2,7 +2,7 @@ import os
 
 # Base paths
 BASE_PATH = r"D:\raw_data\Code"
-PATH_TO_SSD = r"D:\raw_data\small_data"
+PATH_TO_SSD = r"D:\raw_data\data"
 
 
 # Database path
@@ -23,14 +23,14 @@ os.makedirs(PICKLE_PATH, exist_ok=True)
 # Processing parameters
 COMPRESS_QUALITY = 75
 CHUNK_SIZE = 100
-TOTAL_IMAGES = 4.319 # Total number of images to process
+TOTAL_IMAGES = 444.891 # Total number of images to process
 
 # Image processing parameters
-MAX_IMAGE_SIZE = (512, 512)  # Define the maximum image size
-TARGET_IMAGE_SIZE = (224, 224)  # For resizing images
+MAX_IMAGE_SIZE = (512, 512)  
+TARGET_IMAGE_SIZE = (224, 224)  # Resizing the images For EfficientNet b0
 
 ALLOWED_IMAGE_EXTENSIONS = ('.jpg', '.jpeg', '.png', '.svg')
 
 # Checkpoint parameters
-CHECKPOINT_INTERVAL = 1500  # Interval at which checkpoints are saved
+CHECKPOINT_INTERVAL = 1000  # Interval at which checkpoints are saved
 CHECKPOINT_PATH = os.path.join(PICKLE_PATH, 'checkpoint.pkl')  # Path to save checkpoint data
