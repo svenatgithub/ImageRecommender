@@ -28,7 +28,7 @@ def save_embeddings_as_pickle(data, path):
     print(f"Embeddings saved to {path}")
 
 # Function to process images and save checkpoints
-def process_images_and_save_embeddings(image_paths, checkpoint_interval, checkpoint_path, pickle_path):
+def process_images_and_save_embeddings(image_paths, CHUNK_SIZE, CHECKPOINT_PATH, PICKLE_PATH):
     model = EfficientNet.from_pretrained('efficientnet-b0')
     model.eval()
 
