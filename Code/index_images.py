@@ -10,7 +10,7 @@ import io
 import gc
 import pickle
 
-from config import CHUNK_SIZE, COMPRESS_QUALITY, MAX_IMAGE_SIZE, CHECKPOINT_PATH, RGB_PATH, HSV_PATH, PICKLE_PATH
+from config import CHUNK_SIZE, COMPRESS_QUALITY, MAX_IMAGE_SIZE, CHECKPOINT_PATH, RGB_PATH, HSV_PATH, FINAL_EMBEDDINGS_PATH
 from db_api import create_connection, create_tables, insert_rgb_histogram, insert_hsv_histogram, insert_embedding
 
 def compress_image(image, quality=COMPRESS_QUALITY, max_size=(512, 512)):
@@ -42,17 +42,17 @@ def get_images(PATH_TO_SSD, CHUNK_SIZE):
     for i in range(total_chunks):
         yield image_files[i * CHUNK_SIZE:(i + 1) * CHUNK_SIZE], total_chunks, i + 1
 
-def save_checkpoint(data, checkpoint_path):
-    with open(checkpoint_path, 'wb') as f:
+def save_checkpoint(data, CHECKPOINT_PATH):
+    with open(CHECKPOINT_PATH, 'wb') as f:
         pickle.dump(data, f)
 
-def load_checkpoint(checkpoint_path):
-    if os.path.exists(checkpoint_path):
-        with open(checkpoint_path, 'rb') as f:
+def load_checkpoint(CHECKPOINT_PATH):
+    if os.path.exists(CHECKPOINT_PATH):
+        with open(CHECKPOINT_PATH, 'rb') as f:
             return pickle.load(f)
     return None
 
-def save_histograms_as_dicts(rgb_histograms, hsv_histograms, rgb_path, hsv_path):
+def save_histograms_as_dicts(rgb_histograms, hsv_histograms, RGB_PATH, HSV_PATH):
     """Save RGB and HSV histograms as dictionaries in CSV files."""
     print("Saving histograms to CSV files...")
     try:
@@ -81,24 +81,14 @@ def save_histograms_as_dicts(rgb_histograms, hsv_histograms, rgb_path, hsv_path)
         rgb_df = pd.DataFrame(rgb_records)
         hsv_df = pd.DataFrame(hsv_records)
 
-        rgb_df.to_csv(rgb_path, index=False)
-        print(f"RGB histograms saved successfully in {rgb_path}")
+        rgb_df.to_csv(RGB_PATH, index=False)
+        print(f"RGB histograms saved successfully in {RGB_PATH}")
 
-        hsv_df.to_csv(hsv_path, index=False)
-        print(f"HSV histograms saved successfully in {hsv_path}")
+        hsv_df.to_csv(HSV_PATH, index=False)
+        print(f"HSV histograms saved successfully in {HSV_PATH}")
 
     except Exception as e:
         print(f"Failed to save histograms: {e}")
-
-def save_embeddings(embeddings):
-    print("Saving embeddings to pickle file...")
-    try:
-        with open(os.path.join(PICKLE_PATH, 'embeddings.pkl'), 'wb') as f:
-            pickle.dump(embeddings, f)
-        print("Embeddings saved successfully.")
-    except Exception as e:
-        print(f"Failed to save embeddings: {e}")
-        raise  # Re-raise the exception to stop execution if saving fails
 
 def process_and_save_images(RGB_PATH, HSV_PATH, PATH_TO_SSD, CHUNK_SIZE):
     conn = create_connection('metadata.db')
@@ -113,10 +103,9 @@ def process_and_save_images(RGB_PATH, HSV_PATH, PATH_TO_SSD, CHUNK_SIZE):
     if checkpoint:
         start_chunk = checkpoint['chunk_index']
         print(f"Resuming from chunk {start_chunk + 1}")
-
+    
     rgb_histograms = []
     hsv_histograms = []
-    embeddings = {}
 
     for chunk_images, total_chunks, chunk_index in get_images(PATH_TO_SSD, CHUNK_SIZE):
         if chunk_index <= start_chunk:
@@ -177,8 +166,7 @@ def process_and_save_images(RGB_PATH, HSV_PATH, PATH_TO_SSD, CHUNK_SIZE):
 
     # Save histograms and embeddings after all chunks are processed
     save_histograms_as_dicts(rgb_histograms, hsv_histograms, RGB_PATH, HSV_PATH)
-    save_embeddings(embeddings)
-
+   
     if os.path.exists(CHECKPOINT_PATH):
         os.remove(CHECKPOINT_PATH)
 
