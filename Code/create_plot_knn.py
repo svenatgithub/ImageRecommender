@@ -177,7 +177,7 @@ def main():
             return
 
         # Choose an image index to compare against (for testing, you can pick any index)
-        image_index = 0  # Change this index as needed
+        image_index = 1  # Change this index as needed
 
         # Find top 5 most similar images
         top_5_indices = find_top_5_similar_images(embeddings, rgb_histograms, hsv_histograms, image_index)
