@@ -4,41 +4,56 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cosine, euclidean
 from PIL import Image
 import pickle
-import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
-from config import PATH_TO_SSD, RGB_PATH, HSV_PATH, FINAL_EMBEDDINGS_PATH
+from config import PATH_TO_SSD, FINAL_EMBEDDINGS_PATH
 
 import plotly.express as px
 import umap
 from sklearn.cluster import KMeans, AgglomerativeClustering
-from joblib import Parallel, delayed
-import sqlite3
 import plotly.io as pio
 
-# New imports for Kernel PCA
 from sklearn.decomposition import KernelPCA
 from sklearn.preprocessing import StandardScaler
+from difflib import SequenceMatcher
 
-def load_embeddings(path):
-    print(f"Loading embeddings from {path}")
-    with open(path, 'rb') as f:
+os.environ['OMP_NUM_THREADS'] = '14'
+
+def load_data(FINAL_EMBEDDINGS_PATH):
+    print(f"Loading data from {FINAL_EMBEDDINGS_PATH}")
+    with open(FINAL_EMBEDDINGS_PATH, 'rb') as f:
         data = pickle.load(f)
-    print(f"Embeddings loaded. Keys in the loaded data: {data.keys()}")
+    print(f"Data loaded. Number of images: {len(data)}")
+    print(f"Sample key: {list(data.keys())[0]}")
+    print(f"Sample value shape: {data[list(data.keys())[0]].shape}")
     return data
 
-def load_histograms(path):
-    print(f"Loading histograms from {path}")
-    df = pd.read_csv(path, header=0)
-    print(f"Histograms loaded. Shape: {df.shape}")
-    return df
+def string_similarity(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
-def compute_cosine_similarity(embedding1, embedding2):
-    return 1 - cosine(embedding1, embedding2)
+def calculate_accuracy(embeddings, target_image_id, similar_images, metric='cosine'):
+    target_embedding = embeddings[target_image_id]
+    target_base = os.path.splitext(target_image_id)[0].split('_')[0]
+    
+    accuracies = []
+    for similar_image_id in similar_images:
+        if metric == 'cosine':
+            distance = cosine(target_embedding, embeddings[similar_image_id])
+            similarity = 1 - distance
+        elif metric == 'euclidean':
+            distance = euclidean(target_embedding, embeddings[similar_image_id])
+            similarity = 1 / (1 + distance)
+        else:
+            raise ValueError("Invalid metric. Use 'cosine' or 'euclidean'.")
+        
+        similar_base = os.path.splitext(similar_image_id)[0].split('_')[0]
+        filename_similarity = string_similarity(target_base, similar_base)
+        
+        combined_accuracy = (similarity + filename_similarity) / 2
+        accuracies.append((similar_image_id, combined_accuracy))
+    
+    return accuracies
 
-def compute_euclidean_distance(embedding1, embedding2):
-    return euclidean(embedding1, embedding2)
-
-def find_top_similar_images(embedding_values, target_embedding, metric='cosine', top_n=5):
+def find_top_similar_images(embedding_values, target_embedding, image_ids, metric='cosine', top_n=5):
     if metric == 'cosine':
         similarities = cosine_similarity([target_embedding], embedding_values)[0]
         top_indices = similarities.argsort()[-top_n:][::-1]
@@ -47,7 +62,9 @@ def find_top_similar_images(embedding_values, target_embedding, metric='cosine',
         top_indices = distances.argsort()[:top_n]
     else:
         raise ValueError("Invalid metric. Use 'cosine' or 'euclidean'.")
-    return top_indices
+    
+    top_image_ids = [image_ids[i] for i in top_indices]
+    return top_indices, top_image_ids
 
 def plot_images(image_paths, title, target_image_path=None):
     n_images = len(image_paths) + (1 if target_image_path else 0)
@@ -77,19 +94,21 @@ def plot_images(image_paths, title, target_image_path=None):
     plt.show()
     plt.close()
 
-def compare_and_plot_top_images(embeddings, rgb_histograms, hsv_histograms, target_image_id):
+def compare_and_plot_top_images(embeddings, target_image_id):
     target_embedding = embeddings[target_image_id]
     embedding_values = np.array(list(embeddings.values()))
     image_ids = list(embeddings.keys())
 
-    top_cosine_indices = find_top_similar_images(embedding_values, target_embedding, 'cosine')
-    top_euclidean_indices = find_top_similar_images(embedding_values, target_embedding, 'euclidean')
+    _, top_cosine_ids = find_top_similar_images(embedding_values, target_embedding, image_ids, 'cosine', top_n=5)
+    _, top_euclidean_ids = find_top_similar_images(embedding_values, target_embedding, image_ids, 'euclidean', top_n=5)
 
-    top_cosine_paths = [image_ids[i] for i in top_cosine_indices]
-    top_euclidean_paths = [image_ids[i] for i in top_euclidean_indices]
-
-    plot_images(top_cosine_paths, "Input Image and Top 5 Images by Cosine Similarity", target_image_id)
-    plot_images(top_euclidean_paths, "Input Image and Top 5 Images by Euclidean Distance", target_image_id)
+    plot_images(top_cosine_ids, "Input Image and Top 5 Images by Cosine Similarity", target_image_id)
+    plot_images(top_euclidean_ids, "Input Image and Top 5 Images by Euclidean Distance", target_image_id)
+    
+    cosine_accuracies = calculate_accuracy(embeddings, target_image_id, top_cosine_ids, 'cosine')
+    euclidean_accuracies = calculate_accuracy(embeddings, target_image_id, top_euclidean_ids, 'euclidean')
+    
+    return cosine_accuracies, euclidean_accuracies
 
 def apply_umap(embeddings, n_components=3, n_neighbors=12, min_dist=0.1):
     umap_model = umap.UMAP(
@@ -115,7 +134,6 @@ def plotly_3d_umap(embeddings, labels, title):
     fig.update_traces(marker=dict(size=3))
     pio.show(fig)
 
-# New function for Kernel PCA
 def apply_kernel_pca(embeddings, n_components=100):
     print("Applying Kernel PCA...")
     scaler = StandardScaler()
@@ -128,34 +146,34 @@ def apply_kernel_pca(embeddings, n_components=100):
     return reduced_embeddings, kpca
 
 if __name__ == "__main__":
-    embeddings = load_embeddings(FINAL_EMBEDDINGS_PATH)
+    embeddings = load_data(FINAL_EMBEDDINGS_PATH)
     if not embeddings:
-        print("Failed to load embeddings. Please check the pickle file and its structure.")
+        print("Failed to load data. Please check the pickle file and its structure.")
         exit(1)
 
-    rgb_histograms = load_histograms(RGB_PATH)
-    hsv_histograms = load_histograms(HSV_PATH)
-
-    # Convert embeddings to numpy array
     uuids = list(embeddings.keys())
     embedding_values = np.array(list(embeddings.values()))
 
-    # Apply Kernel PCA
     kpca_embeddings, kpca_model = apply_kernel_pca(embedding_values, n_components=100)
 
-    # Use the first image as an example
-    target_image_id = uuids[0]
+    target_image_id = uuids[10]
     print(f"Using target image ID: {target_image_id}")
 
-    # Update embeddings dictionary with reduced embeddings
     reduced_embeddings = {uuid: emb for uuid, emb in zip(uuids, kpca_embeddings)}
 
-    compare_and_plot_top_images(reduced_embeddings, rgb_histograms, hsv_histograms, target_image_id)
+    cosine_accuracies, euclidean_accuracies = compare_and_plot_top_images(reduced_embeddings, target_image_id)
+
+    print("Cosine similarity accuracies:")
+    for image_id, accuracy in cosine_accuracies:
+        print(f"{image_id}: {accuracy:.4f}")
+
+    print("\nEuclidean distance accuracies:")
+    for image_id, accuracy in euclidean_accuracies:
+        print(f"{image_id}: {accuracy:.4f}")
 
     print("Applying UMAP...")
     umap_embeddings, umap_model = apply_umap(kpca_embeddings, n_components=3, n_neighbors=12, min_dist=0.1)
 
-    # K-Means clustering
     n_clusters = 12
     print(f"Applying K-Means clustering with {n_clusters} clusters...")
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
@@ -164,7 +182,6 @@ if __name__ == "__main__":
     print("Plotting K-Means clustering results...")
     plotly_3d_umap(umap_embeddings, kmeans_labels, "Interactive 3D UMAP with K-Means Clustering")
 
-    # Agglomerative Clustering
     print(f"Applying Agglomerative Clustering with {n_clusters} clusters...")
     agg_clustering = AgglomerativeClustering(n_clusters=n_clusters)
     agg_labels = agg_clustering.fit_predict(kpca_embeddings)
