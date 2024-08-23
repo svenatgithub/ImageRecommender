@@ -26,32 +26,6 @@ def compute_histogram(RGB_PATH, color_space='RGB'):
     histogram = img.histogram()
     return np.array(histogram) / np.sum(histogram)
 
-print("Computing HSV histograms for UMAP...")
-hsv_histograms = [compute_histogram(path, 'HSV') for path in PATH_TO_SSD.iloc[:, 0]]
-hsv_histograms = np.array(hsv_histograms)
-
-print("Applying UMAP on HSV histograms...")
-umap_hsv, umap_model_hsv = apply_umap(hsv_histograms, n_components=3)
-
-n_clusters = 12
-print(f"Applying K-Means clustering with {n_clusters} clusters on HSV UMAP...")
-kmeans_hsv = KMeans(n_clusters=n_clusters, random_state=42)
-kmeans_labels_hsv = kmeans_hsv.fit_predict(umap_hsv)
-
-print("Plotting K-Means clustering results for HSV...")
-plotly_3d_umap(umap_hsv, kmeans_labels_hsv, "Interactive 3D UMAP with K-Means Clustering (HSV)")
-
-print(f"Applying Agglomerative Clustering with {n_clusters} clusters on HSV UMAP...")
-agg_clustering_hsv = AgglomerativeClustering(n_clusters=n_clusters)
-agg_labels_hsv = agg_clustering_hsv.fit_predict(umap_hsv)
-
-print("Plotting Agglomerative Clustering results for HSV...")
-plotly_3d_umap(
-    umap_hsv,
-    agg_labels_hsv,
-    f"Interactive 3D UMAP with Agglomerative Clustering (HSV)"
-)
-
 def compute_cosine_similarity(hist1, hist2):
     return 1 - cosine(hist1, hist2)
 
@@ -135,7 +109,6 @@ def compare_and_plot_top_images(image_paths, target_image_id):
     plot_images(top_euclidean_paths_rgb, "Top 5 Images by RGB Euclidean Distance", target_path, euclidean_accuracies_rgb)
     plot_images(top_cosine_paths_hsv, "Top 5 Images by HSV Cosine Similarity", target_path, cosine_accuracies_hsv)
     plot_images(top_euclidean_paths_hsv, "Top 5 Images by HSV Euclidean Distance", target_path, euclidean_accuracies_hsv)
-
     return (cosine_accuracies_rgb, euclidean_accuracies_rgb, cosine_accuracies_hsv, euclidean_accuracies_hsv)
 
 def apply_umap(histograms, n_components=3, n_neighbors=12, min_dist=0.1):
@@ -164,12 +137,13 @@ def plotly_3d_umap(histograms, labels, title):
 
 if __name__ == "__main__":
     try:
-        image_paths = load_image_paths(RGB_PATH)
+        rgb_image_paths = load_image_paths(RGB_PATH)
+        hsv_image_paths = load_image_paths(HSV_PATH)
 
-        target_image_id = image_paths.index[0]
+        target_image_id = rgb_image_paths.index[0]
         print(f"Using target image ID: {target_image_id}")
 
-        accuracies = compare_and_plot_top_images(image_paths, target_image_id)
+        accuracies = compare_and_plot_top_images(rgb_image_paths, target_image_id)
 
         print("RGB Cosine Accuracies:", accuracies[0])
         print("RGB Euclidean Accuracies:", accuracies[1])
@@ -177,7 +151,7 @@ if __name__ == "__main__":
         print("HSV Euclidean Accuracies:", accuracies[3])
 
         print("Computing RGB histograms for UMAP...")
-        rgb_histograms = [compute_histogram(path, 'RGB') for path in image_paths.iloc[:, 0]]
+        rgb_histograms = [compute_histogram(path, 'RGB') for path in rgb_image_paths.iloc[:, 0]]
         rgb_histograms = np.array(rgb_histograms)
 
         print("Applying UMAP on RGB histograms...")
@@ -202,9 +176,9 @@ if __name__ == "__main__":
             f"Interactive 3D UMAP with Agglomerative Clustering (RGB)"
         )
 
-        # Insert HSV Processing Here
+    # HSV UMAP and clustering
         print("Computing HSV histograms for UMAP...")
-        hsv_histograms = [compute_histogram(path, 'HSV') for path in image_paths.iloc[:, 0]]
+        hsv_histograms = [compute_histogram(path, 'HSV') for path in hsv_image_paths.iloc[:, 0]]
         hsv_histograms = np.array(hsv_histograms)
 
         print("Applying UMAP on HSV histograms...")
